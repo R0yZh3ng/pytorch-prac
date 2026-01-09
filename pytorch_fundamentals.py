@@ -171,6 +171,75 @@ print(tensor_ew)
 
 dot_product = torch.matmul(tensor, tensor) # pytorch provided matrix multiplciation and returns the dot product of the tensor
 print(dot_product)
+dot_product = tensor @ tensor # also works, just less clear when code get large
+#dot_product = torch.mm(tensor, tensor) # this the same thing, short version of torch.matmul() but is a lot stricter and enforce inner dimension matches, can use this if know for sure multiplying matrixes and when writing lower level code
+
+#can write the dot product function yourself using
+value = 0
+for i in range(len(tensor)):
+    value += tensor[i] * tensor[i]
+print(value)
+
+#this will result in the same answer but the pytorch provided function is a lot faster, (almost 10x), so given any operations that are provided by the pytorch library, use it, it will reliably be faster than you own impelmentation unless you are writting a library in a lower level language
+
+###one of the most common errors in deep learning: shape errors ***
+
+##there are two rules that performing matrix multiplcation needs to satisfy
+
+# 1, the inner dimensions must match
+# ex : (3, 2) @ (3, 2) will not work
+#      (3, 2) @ (2, 3) will work
+#      this is just the basics of matrix algebra which is that for matrix multiplication to work, the number of columns of the first matrix must match the number of rows of the second matrix
+# 2. the resulting matrix will have the shape of the outter dimensions
+#
+#       (3, 2) @ (2, 3) shape = (3, 3)
+#       (3, 2) @ (2, 4) shape = (3. 4)
+#       \
+tensor = torch.tensor([[1,2,3],
+                       [4,5,6]])
+
+#### transpose ######
+# if in the case which the matrix shapes do not allow for inner dimensions ot match, you can use transpose to switch the dimensions of a tensor from n x m to m x n , whihc may or may not resolve the shape mismatch
+print(tensor)
+tensor.T # need to use these within a funcion or assign them to a value for them to work
+print(tensor)
+#The use of `x.T` on tensors of dimension other than 2 to reverse their shape is deprecated and it will throw an error in a future release. Consider `x.mT` to transpose batches of matrices or `x.permute(*torch.arange(x.ndim - 1, -1, -1))` to reverse the dimensions of a tensor. (Triggered internally at /pytorch/aten/src/ATen/native/TensorShape.cpp:4416.)
+# tensor.T
+tensor.mT
+# tensor.permute(tensor.ndim -1, -1) 
+print(tensor.mT) 
+
+### finding the min , max, mean , sum etc (tensor aggregation)
+
+#create a tensor 
+x = torch.arange(0, 100, 10)
+print(x)
+max = torch.max(x)
+print(max)
+max_2 = x.max()
+print(max_2)
+
+mean = torch.mean(x.type(torch.float32)) # mean does not take long
+print(mean)
+
+mean_2 = x.type(torch.float32).mean()
+print(mean_2)
+
+torch.sum()
+x.sum()
+
+## positional min and max
+
+##find the position in tensor that has the minimum/max value - bascially the index in which the min and max is at in the tensor
+x.argmax()
+x.argmin()
+
+# tensor elements can be accessed through indexing just like arrays
+x[9]
 
 
 
+# reshaping, stacking, squeezing and unsqueezing tensors
+#
+# # reshaping - reshapes an input tensor to a defined shape
+# # view - return a view of an input tnesor of 
