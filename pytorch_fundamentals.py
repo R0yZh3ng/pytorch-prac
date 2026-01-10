@@ -225,7 +225,7 @@ print(mean)
 mean_2 = x.type(torch.float32).mean()
 print(mean_2)
 
-torch.sum()
+torch.sum(x)
 x.sum()
 
 ## positional min and max
@@ -242,4 +242,185 @@ x[9]
 # reshaping, stacking, squeezing and unsqueezing tensors
 #
 # # reshaping - reshapes an input tensor to a defined shape
-# # view - return a view of an input tnesor of 
+# # view - return a view of an input tensor of certian shape but keep the same memory as the original tensor
+# # stacking - combine multuple tensors on top of each other (vstack) ro side by side (hstack) or jsut use stack and input the dimension in the arguments
+# # squeeze - removes all '1' dimensions from a tensor
+# # unqueeze - add a '1' dmision to a target tensor
+# # permute - return a view of the input with dimensions permuted (swapped in a certian way)
+#
+
+x = torch.arange(1., 10.)
+print(x)
+print(x.shape)
+
+#x_reshaped = x.reshaped(1, 7) ## this will not work because reshaping requires the number of elements in the tensor to still consistent after reshaping, so the dimensions can be changes arond however you like but must equate to the same number of elements
+x_reshaped = x.reshape(1, 9) # this just adds an dimension
+print(x_reshaped)
+print(x_reshaped.shape)
+
+#view
+z = x.view(1, 9)
+print(z)
+print(z.shape)
+#view gives the same exact results as computing operations based on x, changing z changes x because view of a tensor shares the same memory as the original, these are basiclaly tensor pointers
+
+z[:, 0] = 5 #this access by indexing
+print(z)
+print(x)
+
+# Stack tensors on top of each other 
+x_stacked = torch.stack([x, x, x, x], dim = 0) #concatenates a sequence of tensors along a new dimension, the default dimension is 0 
+#torch.stack(tensors, dim =0, *, out = None) -> Tensor
+print(x_stacked)
+
+x_stacked = torch.stack([x, x, x, x], dim = 1)
+print(x_stacked)
+
+#can also use vstack and hstack which is just 0 and 1 for dimesions as param, not all dimensions will work
+
+# Tensor squeezing
+# remember x_reshaped from up earlier
+
+print(x_reshaped.squeeze()) # removed the single dimension from the tensor
+print(x_reshaped.squeeze().shape) #this jsut gives torch.Size([9])
+
+
+# tensor unsqueeze
+x_squeezed = x_reshaped.squeeze()
+
+x_unsqueezed = x_squeezed.unsqueeze(dim = 0) # this jsut adds an extra dimension to the tensor,   NOTE: Unsqueeze requires a dimension input and adding the dim is index based
+
+print(x_squeezed)
+print(x_unsqueezed)
+
+# permuting a tensor
+#
+# rerranges a tensor in a specified order
+# returns a view of teh rorigihnal tensor input with its dimensions permuted
+
+x = torch.randn(224, 224, 3) # [height, width, color_channels]
+print(x.size())
+print(torch.permute(x, (2, 0, 1)).size()) #the secodn input here is the dimensions in order
+print(x.permute(2, 0 , 1)) #shifts axis 0->1, 1->2, 2->0
+print(x.permute(2, 0 , 1).shape) #recall that since permute returns a view of the original tensor, any changes made to the original tensor will be applied to the permuted tensor and the reverse also applies, since youd be changes the same memory, thus element changes made to x will result in the same changes to the permuted at the same index, instead of index after permutation
+
+#indexing (selecting data from tensors)
+
+#creat a tensor
+
+x = torch.arange(1, 10).reshape(1, 3, 3,)
+print(x)
+print(x.shape)
+
+# lets index on our new tensor
+#
+# x[0] - accesses the first dimension
+# x[0][0], same as x[0, 0], anyway this is just like accessing multi dimensional arrays
+#
+# you can also use ":" to select all of a target dimension
+
+x[:, 0]
+print(x[:, 0])
+# #get all values of 0th and 1st dimensions but only index 1 of the 2nd dimensiona
+x[:, :, 1]
+
+#get all values of the 0 dimension but only the 1 index value of the 1st and 2nd dimension
+
+print(x[:, 1, 1])
+
+## pytorch tensors and numpy
+
+#numpy is a popular scientific python numerical computing library
+# and because of thism pytorch has fucntionality to interact with it
+# data in NumPy, want in Pytroch tensor -> 'torch.from_numpy(ndarray)' 
+# pytorch to numpy -> torch.Tensor.numpy()
+#
+array = np.arange(1.0, 8.0)
+tensor = torch.from_numpy(array)
+print(array)
+print(tensor)
+
+#NOTE: numpy's default dtype is float 64 where as pytorch is float32, so make sure you conversions if you want ot keep one or the other
+
+#if the array gets changed, then the tensor will NOT get changed
+
+#Tensor to numpy
+
+tensor = torch.ones(7)
+numpy_tensor = tensor.numpy()
+print(tensor)
+print(numpy_tensor) #NOTE: defaut dtype will always follow the one that is converting from, so in this case the numpy array is now a float32
+
+## reproduceability (trying to take the random out of random)
+
+#in short, how a neural network learns is to start with random numbers, perform operatiojns then update random number to try and make them better represent the data, this will occur again and again until satisfactory results comapred to a testing data set
+
+print(torch.rand(3, 3))
+
+#to reduce the randomness in neural networks and pytorch comes the concept of a random seed, essentially what the random seed does is 'flavour' the randomness
+#this works because all randomness in computing is pseudo random
+
+#create two random tensors
+
+random_tensor_A = torch.rand(3, 4)
+random_tensor_B = torch.rand(3, 4)
+
+print(random_tensor_A == random_tensor_B) # this compares all elements index by index and produce a tensor with each result in the indices
+
+RANDOM_SEED = 42 #NOTE: this is also kind of a like a api key for secruity as it calls a function with a specified key value only you would know and generates the same pseudo random number
+
+torch.manual_seed(RANDOM_SEED)
+
+random_tensor_C = torch.rand(3,4)
+
+torch.manual_seed(RANDOM_SEED) #NOTE: when creating a random and you wanna use the random seed, you have to result the manuel_seed everytime because it only lasts for one operationj
+random_tensor_D = torch.rand(3,4)
+
+print(random_tensor_C)
+print(random_tensor_D)
+
+# these will result in the same tensor because they are using the same random seed, which is like a lable for a specific way of computing the random numbers I guess? all random numbers generated by computers so far are pseudo random after all
+#
+
+#NOTE: go to the reproduceability documentation for pytorch to learn more as this is a crucil concept, also go to the wiki to look up random seeds
+
+##running tensors and pytroch objects on GPUS(and makeing faster computations)
+
+#GPU = faster computtation on numbers, thanks to CUDA + NVIDIA hardware + PyTorch working behind the scenes to make everythinh good
+
+### 1. getting a GPU
+
+#1. easiest is to use google collab or juypter lab
+#2. use your own gpu - takes a bit of setup
+#3. use cloud computing - GCP, AWS, AZURE, allows you to rent gpu on the cloud and access them
+
+print(torch.cuda.is_available())
+
+
+#######setup device agnostic code
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+#count number of devices
+print(torch.cuda.device_count())
+
+#NOTE: refer to pytorch for best practices in using devices
+
+# putting tensors and models on the gpu
+#
+# the reason we want out tensors/models on teh gpu is because using a GPU results in faster computations
+#
+# create a tensor (default is on the CPU)
+tensor = torch.tensor([1,2 ,3], device = "cpu")
+print(tensor, tensor.device)
+
+#move tensor to GPU (if avaiblable)
+
+tensor_on_gpu = tensor.to(device)
+print(tensor_on_gpu)
+
+#NOTE: moving tensors back to the cpu may be neccessary if using libraries like numpy that only runs on the cpu
+
+tensor_back_on_cpu = tensor_on_gpu.cpu().numpy()
+
+# this would work because we put it back on the cpu
