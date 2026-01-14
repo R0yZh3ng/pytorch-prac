@@ -317,3 +317,19 @@ with torch.inference_mode():
     y_preds = model_0(x_test)
 
 print(y_preds == loaded_model_preds)
+
+
+
+
+#### create a linear model by subclassing nn.Module
+
+class LinearRegressionModelV2(nn.Module):
+    def __init__(self):
+        super().__init__()
+        #use nn.Linear for creating the model parameters
+        self.linear_layer = nn.Linear(in_features=1, out_features=1) # this way we are creatng model params uisng layers where we can specify the number of inputs and outputs / also called linear transform, probing layer, fully connected layer, dense layer
+    
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        return self.linear_layer(x)
+
+ 
