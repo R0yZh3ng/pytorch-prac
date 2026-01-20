@@ -170,10 +170,66 @@ def accuracy_fn(y_true, y_pred):
 # we can convert these logits into prediciton probabilites by passihng them to some kind of activation function (sigmoid for binary cross entropy and softamx for multiclass classficiation)
 # then we can convert our models prediction probabilities to prediction labels by either rondung them or taking the argmax() (this would be for multiclass)
 #
+#view the first 5 outputs of theh forward pass on the test data
 model_0.eval()
-with torhc.inference_mode():
+with torhc.inference_mode(): 
     y_logits = model_0(X_test)[:5]
 print(y_logits)
 
-epochs =
+y_pred_probs = torch.sigmoid(y_logits) # round only after the sigmoid because the weigths and bias need to be first turned into prediction  probabiliies 
+y_pred = torch.round(y_pred_probs)
+print(torch.eq(y_preds.squeeze(), y_pred_labels.squeeze()))  #the squeeze just gets rid of the extra dimension
+
+#TODO: building a training and test loop
+torch.manual_seed(42)
+torch.cuda.manual_seed(42) #this also works if ur working on a cuda device
+
+
+epochs = 100
+
+X_train, y_train = X_train.to(device), y_train.to(device) #making sure data is on the right device
+X_test, y_test = X_test.to(device), y_test.to(device)
+
+for epoch in range(epochs):
+    ### Training
+    model_0.train()
+
+    #1. forward pass 
+    y_logits = model_0(X_train).squeeze()
+    y_pred = torch.round(torch.sigmoid(y_logits)) #turn logits into pred probs then into pred lables, sigmoid is a actiation fucntion
+
+    #2. Calculate loss/accurarcy
+
+    loss = loss_fn(y_logits, y_train) #nn.BCEWithLogitsLoss, expect raw logits as input where as if we only use BCELoss then we need to convert and use the sigmoid first
+
+    acc = accuracy_fn(y_true = y_trainm y_pred = y_pred)
+
+
+    #3. optimizer zero grad
+
+    optimizer.zero_grad()
+
+    #4. loss backward
+    loss.backward()
+
+    #5. optimzer step
+    optimizer.step()
+
+
+    ### Testing
+    model_0.eval()
+    with torch.inference_mode():
+        #forward pass
+        test_logits = model_0(X_test).squeeze()
+        test_pred = torch.round(torch.sigmoid(test_logits))
+        
+        #2. calculate test loss/acc
+        test_loss = loss_fn(test_logits, y_test)
+        test_acc = accuracy_fn(y=true, y_pred = test_pred)
+
+    #print out whats happening
+    if epoch % 10 == 0:
+    print(f"Epoch: {epoch} | Loss: {Loss:.5f}, Acc: {acc:.2f} | Test loss: {test_loss:5f}, test")
+
+
 
