@@ -155,7 +155,10 @@ print(untrained_preds[:10]==y_test[:10])
 
 #set up the loss function
 # loss_fun = nn.BCELoss() # this works but needs to have go through the sigmoid activation function already
-loss_fn = nn.BCEWithLogitsLoss() # this has the sigmoid activation function built in which makes the math more stable
+loss_fn = nn.BCEWithLogitsLoss() # this has the sigmoid activation function built in which makes the math more stablea
+
+optimizer = torch.optim.SGD(params=model_0.parameters(),
+                            lr=0.1)
 
 #calculate accuracy of prediction out of 100
 def accuracy_fn(y_true, y_pred):
@@ -172,13 +175,14 @@ def accuracy_fn(y_true, y_pred):
 #
 #view the first 5 outputs of theh forward pass on the test data
 model_0.eval()
-with torhc.inference_mode(): 
+with torch.inference_mode(): 
     y_logits = model_0(X_test)[:5]
 print(y_logits)
 
 y_pred_probs = torch.sigmoid(y_logits) # round only after the sigmoid because the weigths and bias need to be first turned into prediction  probabiliies 
 y_pred = torch.round(y_pred_probs)
-print(torch.eq(y_preds.squeeze(), y_pred_labels.squeeze()))  #the squeeze just gets rid of the extra dimension
+y_pred_label = y_train[:5]
+print(torch.eq(y_pred.squeeze(), y_pred_label.squeeze()))  #the squeeze just gets rid of the extra dimension
 
 #TODO: building a training and test loop
 torch.manual_seed(42)
@@ -202,7 +206,7 @@ for epoch in range(epochs):
 
     loss = loss_fn(y_logits, y_train) #nn.BCEWithLogitsLoss, expect raw logits as input where as if we only use BCELoss then we need to convert and use the sigmoid first
 
-    acc = accuracy_fn(y_true = y_trainm y_pred = y_pred)
+    acc = accuracy_fn(y_true = y_train, y_pred = y_pred)
 
 
     #3. optimizer zero grad
@@ -225,11 +229,145 @@ for epoch in range(epochs):
         
         #2. calculate test loss/acc
         test_loss = loss_fn(test_logits, y_test)
-        test_acc = accuracy_fn(y=true, y_pred = test_pred)
+        test_acc = accuracy_fn(y_true = y_test, y_pred = test_pred)
 
     #print out whats happening
     if epoch % 10 == 0:
-    print(f"Epoch: {epoch} | Loss: {Loss:.5f}, Acc: {acc:.2f} | Test loss: {test_loss:5f}, test")
+       print(f"Epoch: {epoch} | Loss: {loss:.5f}, Acc: {acc:.2f} | Test loss: {test_loss:5f}, Test acc: {test_acc:.2f}%")
+    
+##NOTE: make predictions and evaluate the model
 
+# from the metrics it looks like our model isnt learning anything..
+#
+# so to insepct it lets make some predictions and make them visual
+#
+# Visualization is key in understanding whether the model is effective
+#
+# to do so, we're going to import a function called plot_decision_boundry() 
+
+import requests
+from pathlib import Path
+
+#download helper functions from learn PyTorch repo (if its not already downloaded)
+#dont forget that the link needs to be raw
+
+if Path("helper_function.py").is_file():
+    print("helper_functions.py already exists, skipping download")
+else:
+    print("Downloading helper_functions.py")
+    request = requests.get("https://raw.githubusercontent.com/mrdbourke/pytorch-deep-learning/refs/heads/main/helper_functions.py")
+    with open("helper_functions.py", "wb") as f:
+        f.write(request.content)
+
+from helper_functions import plot_predictions, plot_decision_boundary
+
+#plot decision boundry of the model
+
+plt.figure(figsize=(12, 6))
+plt.subplot(1, 2, 1)
+plt.title("Train")
+plot_decision_boundary(model_0, X_train, y_train)
+plt.subplot(1, 2, 2)
+plt.title("Test")
+plot_decision_boundary(model_0, X_test, y_test)
+plt.savefig("plot_decision_boundary_intro.png")
+
+
+
+#TODO: improving our model(from a model perspective)
+
+#add more layers (giving the model more chances to learn about patterns in the data)
+#add more hidden units (go from 5 hidden units to 10 hidden units) (hidden units transform raw input into abstract, high level feature representations, allowing the model to learn complex, non linear patterns)
+#fit for longer (more epochs so more chances to adjust, but dont forget to adjust learning rate accordingly if wanting to get more accurate)
+#changing the activation fucntions
+#changing the learning rate (bigger/smaller steps allows for more accurate adjustments rather than encountering either a vanaishing or exploding gradient problem)
+
+# these options are all from a model's perspective becayse they deal directly with the model, rather than the data
+# and because these options are all values we (as machine learning engineers and data scientist can change, they are referred to as ) "hyperparameters"
+
+class CircleModelV1(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.layer_1=nn.Linear(in_features=2, out_features=10)
+        self.layer_2=nn.Linear(in_features=10, out_features=10)
+        self.layer_3=nn.Linear(in_features=10, out_features=1)
+
+    def forward(self, x):
+        #z = self.layer_1(x) #NOTE: usually z is used to represent logits
+        #z = self.layer_2(z)
+        #z = self.layer_3(z)
+        #return z # we can use the all in one way of writing it to take advantage of whatever speedup we can get
+        return self.layer_3(self.layer_2(self.layer_1(x)))
+
+
+model_1 = CircleModelV1().to(device)
+
+
+#Create a loss function
+
+loss_fn = nn.BCEWithLogitsLoss() # this has the sigmoid activation function built in which makes the math more stablea
+#Create a optimizer
+optimizer = torch.optim.Adam(params=model_1.parameters(),
+                            lr=0.1)
+
+#write a training and evaluation loop for model 1
+torch.manual_seed(42)
+torch.cuda.manual_seed(42)
+
+
+#train for longer
+
+epochs = 1000
+
+#put data on the target device
+X_train, y_train = X_train.to(device), y_train.to(device)
+X_test, y_test = X_test.to(device), y_test.to(device)
+
+for epoch in range(epochs):
+    model_1.train()
+    
+    #forward pass
+    y_logits = model_1(X_train).squeeze()
+    y_pred = torch.round(torch.sigmoid(y_logits))
+
+    #calculate the loos
+    loss = loss_fn(y_logits, y_train)
+    acc = accuracy_fn(y_true=y_train,
+                      y_pred=y_pred)
+    #optimizer zero grad
+    optimizer.zero_grad()
+
+    # loss backward
+    loss.backward()
+    
+
+    #optimizer step
+    optimizer.step()
+
+    ##testing
+
+    model_1.eval()
+    with torch.inference_mode():
+        #1. forward pass
+        test_logits = model_1(X_test).squeeze()
+        test_pred = torch.round(torch.sigmoid(test_logits))
+        #caclualte the loss
+        test_loss = loss_fn(test_logits, y_test)
+        test_acc = accuracy_fn(y_true=y_test,
+                               y_pred=test_pred)
+
+    #print out whats happening
+    if epoch % 100 == 0:
+        print(f"Epoch: {epoch} | Loss: {loss:.5f}, Acc : {acc:.2f},Test Loss: {test_loss:.5f}, Test acc: {test_acc:.2f}")
+
+
+plt.figure(figsize=(12, 6))
+plt.subplot(1, 2, 1)
+plt.title("Train")
+plot_decision_boundary(model_0, X_train, y_train)
+plt.subplot(1, 2, 2)
+plt.title("Test")
+plot_decision_boundary(model_0, X_test, y_test)
+plt.savefig("plot_decision_boundary_modelV1.png")
 
 
