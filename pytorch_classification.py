@@ -561,3 +561,73 @@ plot_decision_boundary(model_3, X_test, y_test)
 plt.savefig("plot_decision_boundary_modelV3.png")
 
 
+#TODO: replicating non-linear activation functions
+#neural networks, rather than us telling the model what to learn, we give it the tools to discover patterns in data and it tries to figure out the best patterns on its own, and these tools are linear and non-linear functions
+
+
+#creat a tensor
+
+A = torch.arange(-10, 10, 1, dtype=torch.float32)
+
+#visualize the data
+plt.figure()
+plt.plot(A)
+plt.savefig("replication_nL-test.png")
+
+def relu(x: torch.Tensor) -> torch.Tensor: # dont forget that these are type hints to tell the compiler what the input and output types should be in case of an error
+    return torch.maximum(torch.tensor(0), x) #inputs must be tensors
+
+plt.figure()
+plt.plot(relu(A))
+plt.savefig("test_relu.png")
+
+#now lets do the same for the sigmoid function
+
+def sigmoid(x):
+    return 1/(1+ torch.exp(-x)) #torch.exp returns the e^input value, sigmoid function just puts everything in the range between 1 and 0
+
+plt.figure()
+plt.plot(sigmoid(A))
+plt.savefig("test_sigmoid.png")
+
+
+
+#TODO: put it all together with a multi class classiciation problem
+
+
+
+#creating a toy multi class dataset
+
+from sklearn.datasets import make_blobs
+
+
+# set the hyperparameters for data creation
+#
+NUM_CLASSES = 4
+NUM_FEATURES = 2
+RANDOM_SEED = 42 #generally hyperparameters should be capitalized
+
+#1. create multiclass data
+X_blob, y_blob = make_blobs(n_samples=1000,
+                              n_features=NUM_FEATURES,
+                              centers=NUM_CLASSES,
+                              cluster_std=1.5, #gives the clusters a little shake up whatever that meansm,
+                              random_state=RANDOM_SEED)
+
+#2. turn data into tensors
+
+X_blob, y_blob = torch.from_numpy(X_blob).type(torch.float), torch.from_numpy(y_blob).type(torch.float)
+
+#3. split into training and test
+X_blob_train, X_blob_test, y_blob_train, y_blob_test = train_test_split(X_blob,
+                                                                        y_blob,
+                                                                        test_size=0.2,
+                                                                        random_state=RANDOM_SEED)
+
+
+#4. plot the data
+
+plt.figure(figsize=(10, 7))
+plt.scatter(X_blob[:,0], X_blob[:,1], c= y_blob, cmap=plt.cm.RdYlBu)
+plt.savefig("clusters.png")
+
