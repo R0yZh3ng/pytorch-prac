@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 import numpy as np
+import sklearn
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -369,5 +370,194 @@ plt.subplot(1, 2, 2)
 plt.title("Test")
 plot_decision_boundary(model_0, X_test, y_test)
 plt.savefig("plot_decision_boundary_modelV1.png")
+
+
+
+###TODO: preparing data to see if out model can fit a straight line
+
+#one way to troubleshoot a larger problem is to test out smaller problems
+
+
+
+#create some data 
+weight = 0.7
+bias = 0.3
+start = 0 
+end = 1
+step = 0.01
+
+#create data
+X_regression = torch.arange(start, end, step).unsqueeze(dim=1)
+y_regression = weight*X_regression + bias #linear regression formula (without epsilon)
+
+print(len(X_regression))
+print(X_regression[:5], y_regression[:5])
+
+#create train and test splits
+
+train_split = int(0.8 * len(X_regression))
+X_train_regression, y_train_regression = X_regression[:train_split], y_regression[:train_split]
+X_test_regression, y_test_regression = X_regression[train_split:], y_regression[train_split:]
+
+plot_predictions(train_data = X_train_regression,
+                 train_labels = y_train_regression,
+                 test_data = X_test_regression,
+                 test_labels = y_test_regression)
+
+
+#same architecture as model_a (but using nn.sequential)
+
+model_2 = nn.Sequential(
+    nn.Linear(in_features=1, out_features=10),
+    nn.Linear(in_features=10, out_features=10),
+    nn.Linear(in_features=10, out_features=1) 
+).to(device) #this is the same as model one except change the number of in features to make sure that it matches a linear setup
+
+
+loss_fn = nn.L1Loss()
+optimizer = torch.optim.SGD(params = model_2.parameters(), lr=0.1)
+
+#train the model
+
+torch.manual_seed(42)
+torch.cuda.manual_seed(42)
+
+
+epochs = 1000
+
+X_train_regression, y_train_regression = X_train_regression.to(device), y_train_regression.to(device)
+X_test_regression, y_test_regression = X_test_regression.to(device), y_test_regression.to(device)
+
+for epoch in range (epochs):
+    y_pred = model_2(X_train_regression)
+    loss = loss_fn(y_pred, y_train_regression)
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+    model_2.eval()
+    with torch.inference_mode():
+        test_pred = model_2(X_test_regression)
+        test_loss = loss_fn(test_pred, y_test_regression)
+
+
+    if epoch % 100 == 0:
+        print(f"Epoch: {epoch} | Loss: {loss: 5f} | Test loss: {test_loss: .5f}")
+
+model_2.eval()
+with torch.inference_mode():
+    y_pred = model_2(X_test_regression)
+
+plot_predictions(train_data = X_train_regression.cpu(),
+                 train_labels = y_train_regression.cpu(),
+                 test_data = X_test_regression.cpu(),
+                 test_labels = y_test_regression.cpu(),
+                 predictions=y_pred.cpu())
+
+
+#TODO: The missing piece, nonlinearity
+
+#recreating non-linear data
+#make and plot data
+
+n_samples = 1000
+
+X, y = make_circles(n_samples,
+                    noise = 0.03,
+                    random_state=42)
+
+plt.scatter(X[:, 0], X[:, 1], c=y, cmap=plt.cm.RdYlBu)
+
+#convert data to tensors and then to train and test splits
+from sklearn.model_selection import train_test_split
+
+X = torch.from_numpy(X).type(torch.float)
+y = torch.from_numpy(y).type(torch.float)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+
+
+#TODO: building a model with non-linearity
+
+class CircleModelV2(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.layer_1 = nn.Linear(in_features=2, out_features=10)
+        self.layer_2 = nn.Linear(in_features=10, out_features=10)
+        self.layer_3 = nn.Linear(in_features=10, out_features=1)
+        self.relu = nn.ReLU() #relu bascially takes all values < 0 and make it 0, and keeps all values > 0 as it is
+
+    def forward(self, x):
+        #where should we put our non-linear activation functions? 
+        return self.layer_3(self.relu(self.layer_2(self.relu(self.layer_1(x))))) #relu should go through every layer, so if using nn.Sequential you should put a relu between every layer
+
+
+model_3 = CircleModelV2().to(device)
+print(model_3)
+
+#artificial neural networks are just a collection of linear and non linear function which are potentially able ot find patterns in data
+
+#setup loss and optimizer
+
+loss_fn = nn.BCEWithLogitsLoss()
+optimizer = torch.optim.Adam(params=model_3.parameters(), lr = 0.01)
+
+#training a model with non-linearity
+
+#random seeds
+torch.manual_seed(42)
+torch.cuda.manual_seed(42)
+
+#put all data on the target device
+
+X_train = X_train.to(device)
+y_train = y_train.to(device)
+X_test = X_test.to(device)
+y_test = y_test.to(device)
+
+epochs = 10000
+
+for epoch in range(epochs):
+    model_3.train()
+
+    y_logits = model_3(X_train).squeeze()
+    y_pred = torch.round(torch.sigmoid(y_logits))
+
+    loss = loss_fn(y_logits, y_train)
+    acc = accuracy_fn(y_true = y_train,
+                      y_pred = y_pred)
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+    model_3.eval()
+    with torch.inference_mode():
+        test_logits = model_3(X_test).squeeze() # this squeeze is very important in order to make the shapes match
+        test_pred =  torch.round(torch.sigmoid(test_logits))
+
+        test_loss = loss_fn(test_logits, y_test)
+        test_acc = accuracy_fn(y_true = y_test,
+                          y_pred = test_pred)
+
+    if epoch % 1000 == 0:
+        print(f"Epoch: {epoch} | Loss: {loss:.4f}, Acc: {acc:.2f}% | Test Loss: {test_loss:.4f}, Test Acc: {test_acc:.2f}% ") #the .2f just says to the specified decimal places
+
+#make predictions
+
+model_3.eval()
+with torch.inference_mode():
+    y_preds = torch.round(torch.sigmoid(model_3(X_test).squeeze()))
+
+
+
+plt.figure(figsize=(12, 6))
+plt.subplot(1, 2, 1)
+plt.title("Train")
+plot_decision_boundary(model_3, X_train, y_train)
+plt.subplot(1, 2, 2)
+plt.title("Test")
+plot_decision_boundary(model_3, X_test, y_test)
+plt.savefig("plot_decision_boundary_modelV3.png")
 
 
