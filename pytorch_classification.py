@@ -740,3 +740,14 @@ plt.savefig("plot_decision_boundary_modelV4.png")
 # F1-score (combines precision and recall)
 # confusion matrix
 # classification report
+#
+#
+from torch import torchmetrics
+
+torchmetric_accuracy = accuracy.to(device)
+torchmetric_accuracy(y_pred, y_blob_test)
+
+
+
+
+
