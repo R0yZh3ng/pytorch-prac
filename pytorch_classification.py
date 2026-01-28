@@ -616,7 +616,8 @@ X_blob, y_blob = make_blobs(n_samples=1000,
 
 #2. turn data into tensors
 
-X_blob, y_blob = torch.from_numpy(X_blob).type(torch.float), torch.from_numpy(y_blob).type(torch.float)
+X_blob, y_blob = torch.from_numpy(X_blob).type(torch.float), torch.from_numpy(y_blob).type(torch.LongTensor) #y_blob needs to be LongTensor because cross entropy loss asks for it to be index
+print(X_blob, y_blob)
 
 #3. split into training and test
 X_blob_train, X_blob_test, y_blob_train, y_blob_test = train_test_split(X_blob,
@@ -631,3 +632,111 @@ plt.figure(figsize=(10, 7))
 plt.scatter(X_blob[:,0], X_blob[:,1], c= y_blob, cmap=plt.cm.RdYlBu)
 plt.savefig("clusters.png")
 
+
+#TODO: building a multiply class classification model
+
+#create device agnostic code
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+class BlobModel(nn.Module): 
+    def __init__(self, input_features, output_features, hidden_units=8):
+        super().__init__()
+        self.linear_layer_stack = nn.Sequential(
+            nn.Linear(in_features = input_features, out_features = hidden_units),
+            nn.ReLU(),
+            nn.Linear(in_features = hidden_units, out_features = hidden_units),
+            nn.ReLU(),
+            nn.Linear(in_features = hidden_units, out_features = output_features),
+        )
+
+    def forward(self, x):
+        return self.linear_layer_stack(x)
+
+
+model_4 = BlobModel(input_features=2, output_features = 4, hidden_units = 8).to(device)
+
+
+#create a loss function and optimizer for the multi class classification model
+
+loss_fn = nn.CrossEntropyLoss() #note to use weigth parameter if there is a unbalance dataset
+
+
+optimizer = torch.optim.Adam(params = model_4.parameters(), lr = 0.1) ## adam is generally considered better for faster convergence an ease of tunning which is ideal for large scale data and complex models, but sgd is usualy better final generalization and higher accuracy particularly in image classification models
+
+### getting prediction probabilites for a multi class pytorch model
+
+X_blob_train, y_blob_train, X_blob_test, y_blob_test = X_blob_train.to(device), y_blob_train.to(device), X_blob_test.to(device), y_blob_test.to(device)
+
+model_4.eval()
+with torch.inference_mode():
+    y_logits = model_4(X_blob_test)
+
+print(y_logits[:5])
+y_pred_probs = torch.softmax(y_logits, dim=1) # what this softmax does is that it outputs the probability that the inputted data is each one of the output features, and they togetehr sum to one, we will take the make of those probability and classify the inputs this way
+print(y_pred_probs[:5])
+
+torch.argmax(y_pred_probs[0]) #this outputs which class has the highest probability
+
+
+#TODO: convert prediciton probabilities into prediction labels
+
+y_preds = torch.argmax(y_pred_probs, dim=1)
+
+print(y_preds)
+
+## creating a training and testing loop
+
+torch.manual_seed(42)
+torch.cuda.manual_seed(42)
+
+epochs = 1000
+
+for epoch in range(epochs):
+    model_4.train()
+
+    y_logits = model_4(X_blob_train)
+    y_pred_prob = torch.softmax(y_logits, dim=1)
+    y_pred = torch.argmax(y_pred_prob, dim=1)
+
+    loss = loss_fn(y_logits, y_blob_train)
+    acc = accuracy_fn(y_true = y_blob_train,
+                      y_pred = y_pred)
+
+    optimizer.zero_grad()
+
+    loss.backward()
+
+    optimizer.step()
+
+    model_4.eval()
+    with torch.inference_mode():
+        test_logits = model_4(X_blob_test)
+        test_pred = torch.softmax(test_logits, dim=1).argmax(dim=1)
+
+        test_loss = loss_fn(test_logits, y_blob_test)
+        test_acc = accuracy_fn(y_true = y_blob_test,
+                               y_pred = test_pred)
+
+    if epoch % 100 == 0:
+        print(f"Epoch: {epoch} | Loss: {loss:.4f}, Acc: {acc:.2f}% | Test Loss: {test_loss:.4f}, Test Acc: {test_acc:.2f}% ") #the .2f just says to the specified decimal places
+
+
+
+plt.figure(figsize=(12, 6))
+plt.subplot(1, 2, 1)
+plt.title("Train")
+plot_decision_boundary(model_4, X_blob_train, y_blob_train)
+plt.subplot(1, 2, 2)
+plt.title("Test")
+plot_decision_boundary(model_4, X_blob_test, y_blob_test)
+plt.savefig("plot_decision_boundary_modelV4.png")
+
+
+##NOTE: a few more classification metrics (to evaluate our model)
+# accuracy - out of 100 samples, how many does our model get right
+# precision
+# recall
+# F1-score (combines precision and recall)
+# confusion matrix
+# classification report
