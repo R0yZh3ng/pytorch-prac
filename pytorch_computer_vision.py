@@ -66,6 +66,22 @@ print(f"Image lable: {class_names[label]}")
 
 #plt.imshow(image) #this will result in a shape mismatch because imshow expects either just the heigth and width or color channels last, but since we are using grayscale images, we cant just squeeze the extra dimension
 
-plt.imshow(image.squeeze())
+plt.imshow(image.squeeze()) #this squeeze will remove that extra dimension
+plt.title(label)
+plt.imshow(image.squeeze(), cmap="gray")
 plt.savefig("test_image.png")
+
+torch.manual_seed(42)
+torch.cuda.manual_seed(42)
+fig = plt.figure(figsize=(9,9))
+rows, cols = 4, 4
+for i in range(1, rows*cols+1):
+    random_idx = torch.randint(0, len(train_data), size=[1]).item()
+    img, label = train_data[random_idx]
+    fig.add_subplot(rows, cols, i)
+    plt.imshow(img.squeeze(), cmap="gray")
+    plt.title(class_names[label])
+    plt.axis(False)
+    plt.savefig("test_image_collection.png")
+    print(random_idx) 
 
