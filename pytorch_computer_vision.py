@@ -85,3 +85,65 @@ for i in range(1, rows*cols+1):
     plt.savefig("test_image_collection.png")
     print(random_idx) 
 
+from torch.utils.data import DataLoader
+
+#batch size hyperparameter
+BATCH_SIZE = 32
+
+# turning datasets into iterables
+
+train_dataloader = DataLoader(dataset=train_data, 
+                              batch_size=BATCH_SIZE,
+                              shuffle=True)
+
+test_dataloader = DataLoader(dataset=test_data,
+                             batch_size=BATCH_SIZE,
+                             shuffle=False) #test data doesnt need to be shuffled because the model will only use it to verify rather than train off of it so the order doesnt matter
+
+
+print(f"DataLoaders: {train_dataloader, test_dataloader}")
+print(f"Length of the train_dataloader: {len(train_dataloader)} batches of {BATCH_SIZE}")
+print(f"Length of the test_dataloader: {len(test_dataloader)} batches of {BATCH_SIZE}")
+
+#for batches that has remainders and is not exactly batch size of 32, the dataloader will handle it automatically so no need to worry about matching sizes of data and batch size
+
+#check out wahts inside the training dataloader
+train_features_batch, train_labels_batch = next(iter(train_dataloader))
+print(train_features_batch.shape, train_labels_batch.shape)
+
+
+torch.manual_seed(42)
+random_idx = torch.randint(0, len(train_features_batch), size=[1]).item()
+img, label = train_features_batch[random_idx], train_labels_batch[random_idx]
+plt.figure()
+plt.imshow(img.squeeze(), cmap="gray")
+plt.title(class_names[label])
+plt.axis(False)
+print(f"Image size: {img.shape}")
+print(f"Label : {label}, label_size: {label.shape}")
+plt.savefig("dataloader.png")
+
+
+# NOTE: Building a baseline model
+# when starting to build a series of machine learning modelling experiement, its best practice to start with a baseline model.
+#
+# A baseline model is a simpel model you will try and improve upon with subsequent models/experiemtns.
+#
+# in other words, start with something simple and iterativly add complexity
+
+#TODO: create a flatten layer
+
+flatten_model = nn.Flatten()
+
+#get a single sample
+
+x = train_features_batch[0]
+
+print(x, x.shape)
+
+#Flatten the sample 
+output = flatten_model(x) #perform forward pass
+
+print(f"Shape before flattening : {x.shape}, Shape after flattening: {output.shape}")
+#this results in one big vector of value
+#NOTE: the flattening turn the shape from [color channels, height, width] ----> [color_channels, height*width]
