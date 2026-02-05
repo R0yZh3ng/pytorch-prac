@@ -274,3 +274,126 @@ train_time_end_on_cpu = timer()
 total_train_time_model_0 = print_train_time(start = train_time_start_on_cpu, end = train_time_end_on_cpu, device = str(next(model_0.parameters()).device))
 #next(model_0.parameters).device gets the device
 
+
+#TODO: make prediction and get model 0 results
+
+torch.manual_seed(42)
+def eval_model(model: torch.nn.Module,
+               data_loader: torch.utils.data.DataLoader,
+               loss_fn: torch.nn.Module,
+               accuracy_fn):
+    """ returns a dictionary containing the results of model predicting on data_loader"""
+    loss, acc = 0, 0 
+    model.eval()
+    with torch.inference_mode():
+        for X, y in tqdm(data_loader):
+            #make predictions
+            y_pred = model(X)
+            #accumlate the loss and acc values per batch
+
+            loss += loss_fn(y_pred, y)
+            acc += accuracy_fn(y_true=y,
+                               y_pred=y_pred.argmax(dim=1))
+
+        #scale loss and acc to find the average loss/acc per batch
+        loss /= len(data_loader)
+        acc /= len(data_loader)
+
+    return {"Model_name": model.__class__.__name__, #only works when model is created with a class
+            "Model_loss": loss.item(),
+            "Model_acc": acc}
+
+#calculate model 0 wretuls on test dataset
+
+model_0_results = eval_model(model=model_0,
+                           data_loader=test_dataloader,
+                           loss_fn=loss_fn,
+                           accuracy_fn=accuracy_fn)
+
+print(model_0_results)
+
+
+#TODO: set up device ignostic code
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+class FashionMNISTModelV1(nn.Module):
+    def __init__(self,
+                 input_shape: int,
+                 hidden_units: int,
+                 output_shape: int):
+        super().__init__()
+        self.layer_stack = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(in_features = input_shape, out_features = hidden_units),
+            nn.ReLU(),
+            nn.Linear(in_features = hidden_units, out_features = hidden_units),
+            nn.ReLU(),
+            nn.Linear(in_features = hidden_units, out_features =output_shape),
+            nn.ReLU()
+        )
+
+    def forward(self, x: torch.Tensor):
+        return self.layer_stack(x)
+
+torch.manual_seed(42)
+torch.cuda.manual_seed(42)
+model_1 = FashionMNISTModelV1(input_shape = 784,
+                              hidden_units = 10,
+                              output_shape = len(class_names)).to(device)
+print(model_1, next(model_1.parameters()).device) #NOTE: all that next does is that it retrieves the next item in a iterable, which parameters return, so if we get the first item in the list of params, then we can check the device it is on, for which all of the params will be on the same device
+
+#set up loss and optimizer
+
+loss_fn = nn.CrossEntropyLoss()  #measure how wrong our model is 
+optimizer = torch.optim.SGD(params=model_1.parameters(),
+                            lr = 0.01) #tries to update our model's paremeteres to reduce the loss
+
+def train_step(model: torch.nn.Module,
+               data_loader: torch.utils.data.DataLoader,
+               loss_fn:torch.nn.Module,
+               accuracy_fn,
+               optimizer: torch.otpim,
+               device: torch.device = device):
+    """ trains the specifiied model """
+    train_loss, train_acc = 0, 0 
+    model.train()
+    train_time = timer()
+    
+    epochs = 100
+
+    for epoch in tqdm(range(epochs)):
+        train_loss = 0
+        print(f"Epoch: {epoch}")
+
+        for batch, (X, y) in enumerate(data_loader):
+            X, y = X.to(device), y.to(device)
+            y_pred = model(X)
+            loss = loss_fn(y_pred, y)
+            train_loss += loss
+            train_acc += accuracy_fn(y_true=y, y_pred = y_pred.argmax(dim=1))# logits to prediction labels
+
+            optimizer.zero_grad()
+            
+            loss.backward()
+
+            optimizer.step()
+
+            if batch % 400 == 0:
+                print(f"looked at {batch * len(X)} / {len(data_loader.dataset)}")
+
+        train_loss /= len(data_loader)
+        train_acc /= len(data_loader)
+
+        print(f"Training_loss: {train_loss:.4f}")
+        print(f"Training_acc: {train_acc:.4f}")
+
+    train_time_end = timer()
+    print(print_train_time(start=train_time, end=train_time_end, device = next(model_1.parameters()).device))
+
+
+train_step(model=model_1,
+           data_loader=train_dataloader,
+           loss_fn=loss_fn,
+           accuracy_fn=accuracy_fn,
+           optimizer=optimizer)
