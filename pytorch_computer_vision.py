@@ -286,7 +286,12 @@ def eval_model(model: torch.nn.Module,
     loss, acc = 0, 0 
     model.eval()
     with torch.inference_mode():
+        ignostic = False
+        if(next(model.parameters()).device.type == "cuda"):
+            ignostic = True
         for X, y in tqdm(data_loader):
+            if(ignostic == True):
+                X, y = X.to(device), y.to(device)
             #make predictions
             y_pred = model(X)
             #accumlate the loss and acc values per batch
@@ -435,3 +440,12 @@ for epoch in range(epochs):
 end_time = timer()
 
 print(print_train_time(start=start_time, end=end_time, device = next(model_1.parameters()).device))
+
+
+
+#get model_1 results dictionary
+
+model_1_results = eval_model(model = model_1,
+                             data_loader = test_dataloader,
+                             loss_fn = loss_fn,
+                             accuracy_fn = accuracy_fn)
