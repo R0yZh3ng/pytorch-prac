@@ -347,7 +347,7 @@ print(model_1, next(model_1.parameters()).device) #NOTE: all that next does is t
 
 loss_fn = nn.CrossEntropyLoss()  #measure how wrong our model is 
 optimizer = torch.optim.SGD(params=model_1.parameters(),
-                            lr = 0.01) #tries to update our model's paremeteres to reduce the loss
+                            lr = 0.1) #tries to update our model's paremeteres to reduce the loss
 
 def train_step(model: torch.nn.Module,
                data_loader: torch.utils.data.DataLoader,
@@ -358,38 +358,28 @@ def train_step(model: torch.nn.Module,
     """ trains the specifiied model """
     train_loss, train_acc = 0, 0 
     model.train()
-    train_time = timer()
-    
-    epochs = 100
 
-    for epoch in tqdm(range(epochs)):
-        train_loss = 0
-        print(f"Epoch: {epoch}")
+    for batch, (X, y) in enumerate(data_loader):
+        X, y = X.to(device), y.to(device)
+        y_pred = model(X)
+        loss = loss_fn(y_pred, y)
+        train_loss += loss
+        train_acc += accuracy_fn(y_true=y, y_pred = y_pred.argmax(dim=1))# logits to prediction labels
 
-        for batch, (X, y) in enumerate(data_loader):
-            X, y = X.to(device), y.to(device)
-            y_pred = model(X)
-            loss = loss_fn(y_pred, y)
-            train_loss += loss
-            train_acc += accuracy_fn(y_true=y, y_pred = y_pred.argmax(dim=1))# logits to prediction labels
-
-            optimizer.zero_grad()
+        optimizer.zero_grad()
             
-            loss.backward()
+        loss.backward()
 
-            optimizer.step()
+        optimizer.step()
 
-            if batch % 400 == 0:
-                print(f"looked at {batch * len(X)} / {len(data_loader.dataset)}")
+        if batch % 400 == 0:
+            print(f"looked at {batch * len(X)} / {len(data_loader.dataset)}")
 
-        train_loss /= len(data_loader)
-        train_acc /= len(data_loader)
+    train_loss /= len(data_loader)
+    train_acc /= len(data_loader)
 
-        print(f"Training_loss: {train_loss:.4f}")
-        print(f"Training_acc: {train_acc:.4f}")
-
-    train_time_end = timer()
-    print(print_train_time(start=train_time, end=train_time_end, device = next(model_1.parameters()).device))
+    print(f"Training_loss: {train_loss:.4f}")
+    print(f"Training_acc: {train_acc:.4f}")
 
 
 train_step(model=model_1,
@@ -397,3 +387,51 @@ train_step(model=model_1,
            loss_fn=loss_fn,
            accuracy_fn=accuracy_fn,
            optimizer=optimizer)
+
+def test_step(model: torch.nn.Module,
+              data_loader: torch.utils.data.DataLoader,
+              loss_fn: torch.nn.Module,
+              accuracy_fn,
+              device: torch.device = device):
+    """tests the specified model"""
+    test_loss, test_acc = 0,0
+    model.eval()
+    with torch.inference_mode():
+        for X,y in tqdm(data_loader):
+            X,y = X.to(device), y.to(device)
+            test_pred = model(X)
+            test_loss += loss_fn(test_pred, y)
+            test_acc += accuracy_fn(y_true = y, y_pred = test_pred.argmax(dim=1))
+        
+        test_loss /= len(data_loader)
+        test_acc /= len(data_loader)
+
+    print(f"\n Test_loss : {test_loss:.4f} | Test_acc : {test_acc:.4f}")
+
+
+test_step(model=model_1,
+          data_loader=test_dataloader,
+          loss_fn = loss_fn,
+          accuracy_fn = accuracy_fn,)
+
+
+epochs = 10
+
+start_time = timer() 
+
+for epoch in range(epochs):
+    print(f"Epoch: {epoch}")
+    train_step(model=model_1,
+           data_loader=train_dataloader,
+           loss_fn=loss_fn,
+           accuracy_fn=accuracy_fn,
+           optimizer=optimizer)
+
+    test_step(model=model_1,
+          data_loader=test_dataloader,
+          loss_fn = loss_fn,
+          accuracy_fn = accuracy_fn,)
+
+end_time = timer()
+
+print(print_train_time(start=start_time, end=end_time, device = next(model_1.parameters()).device))
