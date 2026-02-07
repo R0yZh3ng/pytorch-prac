@@ -449,3 +449,69 @@ model_1_results = eval_model(model = model_1,
                              data_loader = test_dataloader,
                              loss_fn = loss_fn,
                              accuracy_fn = accuracy_fn)
+
+
+## TODO: Building a Convolutional Neural Network - CNNs are known for their capabilities to find patterns in visual data
+
+#create a convolutional neural network
+class FashionMNISTModelV2(nn.Module):
+    """
+        Model architecture that replicates the TinyVGG
+        model from CNN explainer website.
+    """
+    def __init__(self, input_shape: int,
+                       hidden_units: int,
+                       output_shape: int):
+        super().__init__()
+        self.conv_block_1 = nn.Sequential(
+            nn.Conv2d(in_channels = input_shape,
+                      out_channels = hidden_units,
+                      kernel_size = 3,
+                      stride = 1,
+                      padding = 1),
+            nn.ReLU(),
+            nn.Conv2d(in_channels = hidden_units,
+                      out_channels = hidden_units,
+                      kernel_size = 3,
+                      stride = 1,
+                      padding = 1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size = 2)
+        )
+        self.conv_block_2 = nn.Sequential(
+            nn.Conv2d(in_channels = hidden_units,
+                      out_channels = hidden_units,
+                      kernel_size = 3,
+                      stride = 1,
+                      padding = 1),
+            nn.ReLU(),
+            nn.Conv2d(in_channels = hidden_units,
+                      out_channels = hidden_units,
+                      kernel_size = 3,
+                      stride = 1,
+                      padding = 1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size = 2)
+        )
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(in_features = hidden_units*0, #there is a trick to calculate this
+                      out_features = output_shaep)
+        )
+
+        def forward(self, x):
+            x = self.conv_block_1(x)
+            print(x.shape)
+            x = self.conv_block_2(x)
+            print(x.shape)
+            x self.classifier(x)
+            return x
+
+
+torch.manual_seed(42)
+
+model_2 = FashionMNISTModelV2(input_shape = 1,
+                              hidden_units = 10,
+                              output_shape = len(class_names)).to(device)
+
+
