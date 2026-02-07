@@ -229,7 +229,7 @@ torch.manual_seed(42)
 train_time_start_on_cpu = timer()
 
 #set the number of epochs (we'll keep this all for faster training times)
-epochs = 3
+epochs = 1
 
 #creating training and test loop
 for epoch in tqdm(range(epochs)):
@@ -420,7 +420,7 @@ test_step(model=model_1,
           accuracy_fn = accuracy_fn,)
 
 
-epochs = 10
+epochs = 1
 
 start_time = timer() 
 
@@ -495,8 +495,8 @@ class FashionMNISTModelV2(nn.Module):
         )
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(in_features = hidden_units*0, #there is a trick to calculate this
-                      out_features = output_shaep)
+            nn.Linear(in_features = hidden_units, #there is a trick to calculate this
+                      out_features = output_shape)
         )
 
         def forward(self, x):
@@ -504,7 +504,7 @@ class FashionMNISTModelV2(nn.Module):
             print(x.shape)
             x = self.conv_block_2(x)
             print(x.shape)
-            x self.classifier(x)
+            x = self.classifier(x)
             return x
 
 
@@ -514,4 +514,40 @@ model_2 = FashionMNISTModelV2(input_shape = 1,
                               hidden_units = 10,
                               output_shape = len(class_names)).to(device)
 
+#TODO: breakding down the convolutional neural network 
 
+#TODO: nn.Conv2d
+# - 
+
+torch.manual_seed(42)
+
+#create a batch of images
+
+images = torch.randn(size=(32, 3, 64, 64))
+test_image = images[0]
+
+print(f"Image batch shape: {images.shape}")
+print(f"Single image shape: {test_image.shape}")
+print(f"Test image: {test_image}")
+
+#create a single Conv2d layer
+conv_layer = nn.Conv2d(in_channels = 3, #in channels is the same number of color channels of the input image
+                       out_channels = 10, #number of hidden units we have
+                       kernel_size = 3, # this is equivalent to a tuple of n x n (3, 3) the kernel is the size of the group of data that the model with operate on
+                       stride = 1, # how many pixels to jump over each convolution
+                       padding = 0) # how many extra pixels to add on the edge incase there's important information on the edge
+
+conv_output = conv_layer(test_image)
+print(conv_output.shape)
+
+#TODO: MaxPool2d  - just takes the most significant/biggest value within a certrain kernel size and so see if significant patterns persists if we simplfy the data further
+
+print(f"Test image original shape: {test_image.shape}")
+
+max_pool_layer = nn.MaxPool2d(kernel_size = 2)
+
+test_image_through_conv = conv_layer(test_image)
+print(f"shape after going through the conv_layer() {test_image_through_conv.shape}")
+
+test_image_through_conv_and_max_pool = max_pool_layer(test_image_through_conv)
+print(f"shape after going through conv and max pool layer {test_image_through_conv_and_max_pool.shape}")
