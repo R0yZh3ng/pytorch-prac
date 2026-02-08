@@ -495,17 +495,17 @@ class FashionMNISTModelV2(nn.Module):
         )
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(in_features = hidden_units, #there is a trick to calculate this
+            nn.Linear(in_features = hidden_units * 7 * 7, #there is a trick to calculate this, the two numbers at the end are the outputs of the second conv block
                       out_features = output_shape)
         )
 
-        def forward(self, x):
-            x = self.conv_block_1(x)
-            print(x.shape)
-            x = self.conv_block_2(x)
-            print(x.shape)
-            x = self.classifier(x)
-            return x
+    def forward(self, x):
+        x = self.conv_block_1(x)
+        #print(x.shape)
+        x = self.conv_block_2(x)
+        #print(x.shape)
+        x = self.classifier(x)
+        return x
 
 
 torch.manual_seed(42)
@@ -551,3 +551,45 @@ print(f"shape after going through the conv_layer() {test_image_through_conv.shap
 
 test_image_through_conv_and_max_pool = max_pool_layer(test_image_through_conv)
 print(f"shape after going through conv and max pool layer {test_image_through_conv_and_max_pool.shape}")
+
+##TODO: setting up a loss function and optimizer
+
+loss_fn = nn.CrossEntropyLoss()
+optimizer = torch.optim.SGD(params=model_2.parameters(),
+                            lr = 0.1)
+## training and testing our model_2 using our training and testing functions
+
+torch.manual_seed(42)
+torch.cuda.manual_seed(42)
+
+#measure time
+start_time = timer()
+
+epochs = 3
+
+for epoch in tqdm(range(epochs)):
+    print(f"epoch: {epoch} \n-----")
+    train_step(model=model_2,
+               data_loader = train_dataloader,
+               loss_fn = loss_fn,
+               accuracy_fn = accuracy_fn,
+               optimizer = optimizer,
+               device = device)
+
+    test_step(model = model_2,
+              data_loader = test_dataloader,
+              loss_fn = loss_fn,
+              accuracy_fn = accuracy_fn,
+              device = device)
+
+end_time = timer()
+
+total_time = print_train_time(start = start_time, end = end_time, device = device)
+
+#getting the model2 results
+
+model_2_results = eval_model(model = model_2,
+                             data_loader = test_dataloader,
+                             loss_fn = loss_fn,
+                             accuracy_fn = accuracy_fn
+                             device = device)
