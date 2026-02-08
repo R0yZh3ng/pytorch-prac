@@ -16,6 +16,9 @@ from torchvision.transforms import ToTensor
 #import matplot lib
 import matplotlib.pyplot as plt
 
+#import pandas
+import pandas as pd
+
 #check versions
 print(torch.__version__)
 print(torchvision.__version__)
@@ -439,7 +442,7 @@ for epoch in range(epochs):
 
 end_time = timer()
 
-print(print_train_time(start=start_time, end=end_time, device = next(model_1.parameters()).device))
+total_train_time_model_1 = print_train_time(start=start_time, end=end_time, device = next(model_1.parameters()).device)
 
 
 
@@ -584,12 +587,30 @@ for epoch in tqdm(range(epochs)):
 
 end_time = timer()
 
-total_time = print_train_time(start = start_time, end = end_time, device = device)
+total_train_time_model_2 = print_train_time(start = start_time, end = end_time, device = device)
 
 #getting the model2 results
 
 model_2_results = eval_model(model = model_2,
                              data_loader = test_dataloader,
                              loss_fn = loss_fn,
-                             accuracy_fn = accuracy_fn
-                             device = device)
+                             accuracy_fn = accuracy_fn)
+
+
+compare_results = pd.DataFrame([model_0_results, model_1_results, model_2_results])
+print(compare_results)
+
+# add trainig time to results comparison
+# performance speed trade off needs to be considered
+
+
+compare_results["training_time"] = [total_train_time_model_0, total_train_time_model_1, total_train_time_model_2]
+print(compare_results)
+
+#visualize our model results
+
+plt.figure()
+compare_results.set_index("Model_name")["Model_acc"].plot(kind = "barh")
+plt.xlabel("accuracy (%)")
+plt.ylabel("model")
+plt.savefig("model_comparison.png")
