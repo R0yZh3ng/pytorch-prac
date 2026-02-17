@@ -735,4 +735,62 @@ confmat_tensor = confmat(preds=y_pred_tensor,
                          target=test_data.targets)
 print(confmat_tensor)
 
-#3. 
+#3.plot the confusion matrix
+fig, ax = plot_confusion_matrix(
+    conf_mat = confmat_tensor.numpy(), #matplot lib likes working with numpy
+    class_names = class_names,
+    figsize=(10, 7)
+)
+plt.savefig("confusion_matrix.png")
+
+
+##saving and reloading the trained model
+
+from pathlib import Path
+
+#create model dictory path
+
+MODEL_PATH = Path("models")
+MODEL_PATH.mkdir(parents=True,
+                 exist_ok=True)
+
+#create model save
+MODEL_NAME = "03_pytorch_computer_vision_model_2.pth"
+MODEL_SAVE_PATH = MODEL_PATH / MODEL_NAME
+
+#save the model state dict
+print(f"Saving model tp : {MODEL_SAVE_PATH}")
+torch.save(obj=model_2.state_dict(), # dont forget that the state dict is the model's learnt weight and baises
+           f=MODEL_SAVE_PATH)
+
+#create a new instance
+
+torch.manual_seed(42)
+loaded_model_2 = FashionMNISTModelV2(input_shape = 1,
+                                     hidden_units = 10,
+                                     output_shape = len(class_names))
+
+#load in saved state dict()
+loaded_model_2.load_state_dict(torch.load(f=MODEL_SAVE_PATH))
+
+#send model to targer device
+loaded_model_2.to(device)
+
+#evaluate loaded model
+
+torch.manual_seed(42)
+
+loaded_model_2_results = eval_model(
+    model=loaded_model_2,
+    data_loader = test_dataloader,
+    loss_fn = loss_fn,
+    accuracy_fn = accuracy_fn
+)
+print(loaded_model_2_results)
+print(model_2_results)
+
+#check if model results are close to each other
+print(torch.isclose(torch.tensor(model_2_results["Model_loss"]),
+              torch.tensor(loaded_model_2_results["Model_loss"]),
+              atol=1e-02) )#this is adjusting tolerance levels
+
