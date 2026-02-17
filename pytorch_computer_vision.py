@@ -614,3 +614,125 @@ compare_results.set_index("Model_name")["Model_acc"].plot(kind = "barh")
 plt.xlabel("accuracy (%)")
 plt.ylabel("model")
 plt.savefig("model_comparison.png")
+
+def make_predictions(model: torch.nn.Module,
+                     data: list,
+                     device: torch.device = device):
+    pred_probs = []
+    model.eval()
+    with torch.inference_mode():
+        for sample in data:
+            #prepare the sample
+            sample = torch.unsqueeze(sample, dim=0).to(device)
+            
+            #forward pass (model outputs raw logits)
+            pred_logit = model(sample)
+
+            #get prediction probability (logit -> prediction probability)
+            pred_prob = torch.softmax(pred_logit.squeeze(), dim=0)
+
+            #get pred_prob off the gpu for further calculations
+            pred_probs.append(pred_prob.cpu())
+
+
+    #stack the pred_probs to turn list into a tensor
+    return torch.stack(pred_probs)
+
+import random
+test_samples = []
+test_labels = []
+
+for sample, label in random.sample(list(test_data), k=9):
+    test_samples.append(sample)
+    test_labels.append(label)
+
+#view the first sample shape
+test_samples[0].shape
+plt.figure()
+plt.imshow(test_samples[0].squeeze(), cmap="gray")
+plt.title(class_names[test_labels[0]])
+plt.savefig("MP.png")
+
+# Make predictions
+#
+pred_probs = make_predictions(model=model_2,
+                              data=test_samples)
+
+#view the first two prediction probabilities
+print(pred_probs[:2])
+print(test_labels)
+
+#convert prediction probabilities to labels
+pred_classes = pred_probs.argmax(dim=1)
+print(pred_classes)
+
+# plot predictions
+plt.figure(figsize=(9,9))
+nrows = 3
+ncols = 3
+for i, sample in enumerate(test_samples):
+    #create subplot
+    plt.subplot(nrows, ncols, i + 1)
+
+    #plot the target image
+    plt.imshow(sample.squeeze(), cmap="gray")
+
+    #find the prediction (in text form, e.g "sandal")
+    pred_label = class_names[pred_classes[i]]
+
+    #get the truth table (in test form)
+    truth_label = class_names[test_labels[i]]
+
+    #create a title for the plot
+    title_text = f"Pred: {pred_label} | Truth: {truth_label}"
+
+    #check for equality between pred and truth and change color of title text
+    if pred_label == truth_label:
+        plt.title(title_text, fontsize=10, c="g")
+    else:
+        plt.title(title_text, fontsize=10, c="r")
+
+plt.savefig("predplt.png")
+
+
+#making a confustion matrix for further prediction evaluation
+#compares the predicted values with the true values in a tabular way, if 100% correct, all values in the matrix will be top left to bottom right (diagonal line)
+# 1. make predictions with our trained model on the test dataset
+# 2. make a confusion matrix 'torchmetrics.ConfusionMatrix'
+# 3. plot the confusion matrix using 'mlxtend.plotting.plot_confusion_matrix()'
+#
+
+#import tqdm.auto
+from tqdm.auto import tqdm
+
+#1. make predictions with trained model
+y_preds  = []
+model_2.eval()
+with torch.inference_mode():
+    for X, y in tqdm(test_dataloader, desc="making predictions..."):
+        X, y = X.to(device), y.to(device)
+
+        y_logits = model_2(X)
+        y_pred = torch.softmax(y_logits.squeeze(), dim=0).argmax(dim=1)
+        y_preds.append(y_pred.cpu())
+
+#concatenanate list of predictions into a tensor
+print(y_preds)
+y_pred_tensor = torch.cat(y_preds)
+y_pred_tensor[:10]
+print(y_pred_tensor)
+
+import mlxtend
+print(mlxtend.__version__)
+
+
+from torchmetrics import ConfusionMatrix
+from mlxtend.plotting import plot_confusion_matrix
+
+#2. setup confusion instance and copare predictions to targets
+confmat = ConfusionMatrix(task="multiclass", num_classes=len(class_names))#now requires tasks
+confmat_tensor = confmat(preds=y_pred_tensor,
+                         target=test_data.targets)
+print(confmat_tensor)
+
+#3. 
