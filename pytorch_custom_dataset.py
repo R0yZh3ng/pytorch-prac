@@ -484,3 +484,16 @@ print(train_dataloader_custom, test_dataloader_custom)
 img_custom, label_custom = next(iter(train_dataloader_custom))
 
 print(img_custom.shape, label_custom.shape)
+
+
+#NOTE: other forms of transformations (data augmentation)
+# Data augmentation is the process of artificiall adding diversity to your training data.
+# in the case of image data, this may mean applying avrious image transformations to the training images 
+#
+# data augmentation looks at the same image from different perspectives to artificially increase the diversity of a dataset
+# 
+# this practice hopefully results in a model that's mroe generalizable to unseen data
+#
+# NOTE: lets take a look at one particular type of data augmentation used to train pytroch vision models to state of the art levels
+# 
+# lets look at trivial augment
