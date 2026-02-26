@@ -372,3 +372,115 @@ class ImageFolderCustom(Dataset):
             return self.transform(img), class_idx # return data, label (X, y)
         else:
             return img, class_idx # return untransformed image and label
+
+
+#create a tranform
+train_transforms = transforms.Compose([
+    transforms.Resize(size = (64, 64)),
+    transforms.RandomHorizontalFlip(p = 0.5),
+    transforms.ToTensor()
+])
+
+test_transforms = transforms.Compose([
+    transforms.Resize(size = (64, 64)), 
+    #typicall dont need to manupulate orientation for test data
+    transforms.ToTensor()
+])
+
+#test out ImageFolderCustom
+train_data_custom = ImageFolderCustom(targ_dir = train_dir,
+                                      transform = train_transforms)
+
+test_data_custom = ImageFolderCustom(targ_dir = test_dir,
+                                     transform = test_transforms)
+
+print(train_transforms, test_transforms)
+
+print(len(train_data), len(train_data_custom))
+print(len(test_data), len(test_data_custom))
+
+print(train_data_custom.classes)
+
+print(train_data_custom.class_to_idx)
+
+
+#check for equality between original ImageFolder Dataset and ImageFolderCustomDataset
+print(train_data_custom.classes == train_data.classes)
+print(test_data_custom.classes == test_data.classes)
+
+## create a function to display random images
+# 1. take in a 'dataset' and a number of other parameters such as class names and how many images to visualize
+# 2. to prevent the display from getting out of hand, lets cap the number of images to see at 10
+# 3. set the random seed for reproducibility
+# 4. get a list of random sample indexes from the target dataset
+# 5. set up a matplotlib plot
+# 6. loop through the random sample images and plot them with matplotlib
+# 7. make sure the dimensions of out images line up with matplotlib (HWC)
+#
+
+
+def display_random_images(dataset: torch.utils.data.Dataset,
+                          classes: List[str] = None,
+                          n: int = 10,
+                          display_shape: bool = True,
+                          seed: int = None):
+    
+    if n > 10:
+        n = 10
+        display_shape = False
+        print(f"for display purposes, n shouldnt be larger than 10, setting to 10 and removing shape display")
+
+    if seed:
+        random.seed(seed)
+
+    random_samples_idx = random.sample(range(len(dataset)), k=n)
+    
+    plt.figure(figsize = (16, 8))
+
+    for i, targ_sample in enumerate(random_samples_idx):
+        targ_image, targ_label = dataset[targ_sample][0], dataset[targ_sample][1]
+
+        targ_image_adjust = targ_image.permute(1, 2, 0) # ch first to ch last
+
+        plt.subplot(1, n, i + 1)
+        plt.imshow(targ_image_adjust)
+        plt.axis("off")
+        if classes:
+            title = f"Class: {classes[targ_label]}"
+            if display_shape:
+                title = title + f"\nshape: {targ_image_adjust.shape}"
+        plt.title(title)
+
+    plt.savefig("display_random_images.png")
+
+
+display_random_images(train_data,
+                      n =5,
+                      classes = class_names,
+                      seed = 42)
+
+display_random_images(train_data_custom,
+                      n = 20,
+                      classes = class_names,
+                      seed = 42)
+
+
+# turn custom loaded images into 'dataloaders'
+
+from torch.utils.data import DataLoader
+
+train_dataloader_custom = DataLoader(dataset=train_data_custom,
+                                     batch_size=BATCH_SIZE,
+                                     num_workers=0,
+                                     shuffle=True)
+
+test_dataloader_custom = DataLoader(dataset=test_data_custom,
+                                     batch_size=BATCH_SIZE,
+                                     num_workers=0,
+                                     shuffle=False)
+
+print(train_dataloader_custom, test_dataloader_custom)
+
+img_custom, label_custom = next(iter(train_dataloader_custom))
+
+print(img_custom.shape, label_custom.shape)
