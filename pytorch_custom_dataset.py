@@ -497,3 +497,139 @@ print(img_custom.shape, label_custom.shape)
 # NOTE: lets take a look at one particular type of data augmentation used to train pytroch vision models to state of the art levels
 # 
 # lets look at trivial augment
+#
+from torchvision import transforms
+
+train_transform = transforms.Compose([
+    transforms.Resize(size = (224, 224)),
+    transforms.TrivialAugmentWide(num_magnitude_bins=5), #this magnitude is the intensity of the augmentation
+    transforms.ToTensor()
+])
+
+test_transform = transforms.Compose([
+    transforms.Resize(size = (224, 224)),
+    transforms.ToTensor()
+])
+
+#get all image paths
+image_path_list = list(image_path.glob("*/*/*.jpg"))
+
+#plot random transformed images
+
+plot_transformed_images(
+    image_paths = image_path_list,
+    transform = train_transform,
+    n=3,
+    seed=None
+)
+
+# model 0: TinyVGG without data augmentation
+
+#lets replicate TinyVGG archetiecture
+
+#create transforms and loading data for Model 0
+
+#create simple transform
+
+
+simple_transform = transforms.Compose([
+    transforms.Resize(size = (64, 64)),
+    transforms.ToTensor()
+])
+
+# load and transform data
+#
+from torchvision import datasets
+train_data_simple = datasets.ImageFolder(root=train_dir,
+                                         transform = simple_transform)
+
+test_data_simple = datasets.ImageFolder(root=test_dir,
+                                         transform = simple_transform)
+
+# turn the dataset into DataLoaders
+
+import os
+from torch.utils.data import DataLoader
+
+#setup batch size and number of workers
+
+BATCH_SIZE = 32
+NUM_WORKERS = 1
+
+#create dataLoaders
+
+train_dataloader_simple = DataLoader(dataset = train_data_simple,
+                                     batch_size = BATCH_SIZE,
+                                     shuffle = True,
+                                     num_workers = NUM_WORKERS)
+
+test_dataloader_simple = DataLoader(dataset = test_data_simple,
+                                     batch_size = BATCH_SIZE,
+                                     shuffle = False,
+                                     num_workers = NUM_WORKERS)
+
+# create TinyVGG model class
+
+class TinyVGG(nn.Module):
+    """ model architecture copying TinyVGG from CNN explainer """
+    def __init__(self,
+                 input_shape: int,
+                 hidden_units: int,
+                 output_shape: int) -> None:
+        super().__init__()
+        self.conv_block_1 = nn.Sequential(
+            nn.Conv2d(in_channels = input_shape,
+                      out_channels = hidden_units,
+                      kernel_size = 3,
+                      stride = 1,
+                      padding = 1),
+            nn.ReLU(),
+            nn.Conv2d(in_channels = hidden_units,
+                      out_channels = hidden_units,
+                      kernel_size = 3,
+                      stride = 1,
+                      padding = 1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size = 2,
+                         stride = 2) #NOTE: default stride value is the same as the kernel size 
+        )
+        self.conv_block_2 = nn.Sequential(
+            nn.Conv2d(in_channels = hidden_units,
+                      out_channels = hidden_units,
+                      kernel_size = 3,
+                      stride = 1,
+                      padding = 1),
+            nn.ReLU(),
+            nn.Conv2d(in_channels = hidden_units,
+                      out_channels = hidden_units,
+                      kernel_size = 3,
+                      stride = 1,
+                      padding = 1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size = 2,
+                         stride = 2) #NOTE: default stride value is the same as the kernel size 
+        )
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(in_features=hidden_units,
+                      out_features=output_shape)
+        )
+         
+    def forward(self, x):
+        x = self.conv_block_1(x)
+        print(x.shape)
+        x = self.conv_block_2(x)
+        print(x.shape)
+        x = self.classifier(x)
+        print(x.shape)
+        return x
+        #NOTE: return self.classifier(self.conv_block_2(self.conv_block_1(x))) this actually makes it run faster because we are avoiding constant transportation from memory to GPU considering first principles, but for the sake of clarity lets keep it seperate for now
+
+torch.manual_seed(42)
+model_0 = TinyVGG(input_shape = 3,
+                  hidden_units = 10,
+                  output_shape =len(class_names)).to(device)
+
+print(model_0)
+
+
